@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClipboardEdit, CheckCircle } from 'lucide-react';
-import { locations } from '../data/locations';
+import { useLocations } from '../context/LocationContext';
 import { useToast } from '../context/ToastContext';
 import type { InputEntry } from '../types';
 
@@ -26,6 +26,7 @@ export function subscribeInputHistory(fn: () => void) {
 
 export default function InputPage() {
   const { showToast } = useToast();
+  const { locations, addBottles } = useLocations();
   const [showSuccess, setShowSuccess] = useState(false);
   const [locationId, setLocationId] = useState('');
   const [qty, setQty] = useState('');
@@ -58,6 +59,9 @@ export default function InputPage() {
       note,
       time: new Date().toLocaleString('id-ID'),
     });
+
+    // Update global location status
+    addBottles(Number(locationId), parseInt(qty));
 
     setShowSuccess(true);
     showToast('✅ Data berhasil disimpan!');

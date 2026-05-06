@@ -10,6 +10,7 @@ const fillColors: Record<CapacityStatus, string> = {
   low: 'bg-green-500',
   mid: 'bg-amber-400',
   high: 'bg-red-500',
+  full: 'bg-slate-500',
 };
 
 export default function LocationStatusCard({ location }: LocationStatusCardProps) {
