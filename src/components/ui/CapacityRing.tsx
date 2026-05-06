@@ -9,6 +9,7 @@ const statusColors: Record<CapacityStatus, string> = {
   low: 'bg-green-100 text-green-700',
   mid: 'bg-amber-100 text-amber-700',
   high: 'bg-red-100 text-red-600',
+  full: 'bg-slate-200 text-slate-700',
 };
 
 export default function CapacityRing({ capacity, status }: CapacityRingProps) {

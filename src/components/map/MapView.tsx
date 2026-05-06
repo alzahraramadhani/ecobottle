@@ -4,14 +4,15 @@ import L from 'leaflet';
 import { MapPin, RefreshCw } from 'lucide-react';
 import LocationMarker from './LocationMarker';
 import NearestBanner from './NearestBanner';
-import { locations } from '../../data/locations';
+import { useAuth } from '../../context/AuthContext';
+import { useLocations } from '../../context/LocationContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useToast } from '../../context/ToastContext';
 import { getDistance } from '../../utils/distance';
 import type { Location } from '../../types';
 import 'leaflet/dist/leaflet.css';
 
-const CENTER: [number, number] = [-7.9553, 112.6145];
+const CENTER: [number, number] = [-7.9610, 112.6175];
 const DEFAULT_ZOOM = 17;
 
 function MapController({ flyTo }: { flyTo: { lat: number; lng: number; zoom: number } | null }) {
@@ -27,8 +28,10 @@ function MapController({ flyTo }: { flyTo: { lat: number; lng: number; zoom: num
 }
 
 export default function MapView() {
+  const { user } = useAuth();
   const { getPosition } = useGeolocation();
   const { showToast } = useToast();
+  const { locations } = useLocations();
   const [nearest, setNearest] = useState<Location | null>(null);
   const [nearestDist, setNearestDist] = useState(0);
   const [showBanner, setShowBanner] = useState(false);
@@ -51,6 +54,9 @@ export default function MapView() {
     let minDist = Infinity;
 
     locations.forEach((loc) => {
+      // If user is Warga, skip full/closed bins
+      if (user?.role === 'warga' && loc.status === 'full') return;
+
       const d = getDistance(pos.lat, pos.lng, loc.lat, loc.lng);
       if (d < minDist) {
         minDist = d;

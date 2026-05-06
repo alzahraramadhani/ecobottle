@@ -12,18 +12,21 @@ const COLORS: Record<CapacityStatus, string> = {
   low: '#22c55e',
   mid: '#f59e0b',
   high: '#ef4444',
+  full: '#475569', // Gray-600 for closed/full
 };
 
 const LABELS: Record<CapacityStatus, string> = {
   low: 'Tersedia',
   mid: 'Sebagian Penuh',
   high: 'Hampir Penuh',
+  full: 'Penuh (Tutup)',
 };
 
 const BG_COLORS: Record<CapacityStatus, string> = {
   low: '#dcfce7',
   mid: '#fef3c7',
   high: '#fee2e2',
+  full: '#f1f5f9', // Slate-100
 };
 
 function createIcon(status: CapacityStatus) {
@@ -46,11 +49,15 @@ function createIcon(status: CapacityStatus) {
 }
 
 import { useAuth } from '../../context/AuthContext';
-import { Navigation, Scan } from 'lucide-react';
+import { useLocations } from '../../context/LocationContext';
+import { useToast } from '../../context/ToastContext';
+import { Navigation, Scan, PowerOff, CheckCircle } from 'lucide-react';
 
 export default function LocationMarker({ location, onMarkerReady }: LocationMarkerProps) {
   const markerRef = useRef<L.Marker>(null);
   const { user } = useAuth();
+  const { updateLocationStatus } = useLocations();
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (markerRef.current) {
@@ -94,13 +101,41 @@ export default function LocationMarker({ location, onMarkerReady }: LocationMark
             >
               <Navigation size={14} /> Arahkan
             </a>
-            {user?.role === 'warga' && (
+            {user?.role === 'warga' && location.status !== 'full' && (
               <button 
-                onClick={() => alert("Fitur input botol dijalankan (dummy). Scanner akan terbuka.")}
+                onClick={() => {
+                  const qty = 5; // Dummy input for warga
+                  addBottles(location.id, qty);
+                  showToast(`✅ Berhasil menukar ${qty} botol!`);
+                }}
                 className="w-full py-2 bg-white border border-slate-200 text-slate-800 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:bg-slate-50 transition-colors"
               >
                 <Scan size={14} /> Tukar Botol
               </button>
+            )}
+
+            {user?.role === 'petugas' && (
+              location.status === 'full' ? (
+                <button 
+                  onClick={() => {
+                    updateLocationStatus(location.id, 'low');
+                    showToast(`✅ Status ${location.name} diubah ke Tersedia`);
+                  }}
+                  className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer hover:bg-emerald-100 transition-colors"
+                >
+                  <CheckCircle size={14} /> Buka Kembali
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    updateLocationStatus(location.id, 'full');
+                    showToast(`🚨 ${location.name} ditutup manual`);
+                  }}
+                  className="w-full py-2 bg-red-50 text-red-600 border border-red-100 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer hover:bg-red-100 transition-colors"
+                >
+                  <PowerOff size={14} /> Tutup Tempat Sampah
+                </button>
+              )
             )}
           </div>
         </div>

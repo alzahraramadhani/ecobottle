@@ -1,6 +1,6 @@
 export type Role = 'petugas' | 'warga';
 
-export type CapacityStatus = 'low' | 'mid' | 'high';
+export type CapacityStatus = 'low' | 'mid' | 'high' | 'full';
 
 export interface Location {
   id: number;

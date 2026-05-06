@@ -4,11 +4,12 @@ import StatCard from '../components/ui/StatCard';
 import BarChart from '../components/ui/BarChart';
 import LocationStatusCard from '../components/ui/LocationStatusCard';
 import { useAuth } from '../context/AuthContext';
-import { locations } from '../data/locations';
+import { useLocations } from '../context/LocationContext';
 import { weeklyData } from '../data/weeklyData';
 
 export default function HomePage() {
   const { user } = useAuth();
+  const { locations } = useLocations();
 
   const now = new Date();
   const dateString = now.toLocaleDateString('id-ID', {
@@ -57,7 +58,7 @@ export default function HomePage() {
         />
         <StatCard
           icon={AlertTriangle}
-          value={locations.filter((l) => l.status === 'high').length}
+          value={locations.filter((l) => l.status === 'high' || l.status === 'full').length}
           label="Perlu Angkut"
           delay={0.32}
           iconColor="text-amber-500"

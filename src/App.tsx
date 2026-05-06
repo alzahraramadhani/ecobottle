@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { LocationProvider } from './context/LocationContext';
 import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
@@ -91,9 +92,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <RouterConfig />
-        </ToastProvider>
+        <LocationProvider>
+          <ToastProvider>
+            <RouterConfig />
+          </ToastProvider>
+        </LocationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Search, Navigation, MapPin } from 'lucide-react';
-import { locations } from '../../data/locations';
+import { useLocations } from '../../context/LocationContext';
 import type { Location, CapacityStatus } from '../../types';
 import { getDistance } from '../../utils/distance';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -14,18 +14,21 @@ const COLORS: Record<CapacityStatus, string> = {
   low: '#10b981', // emerald-500
   mid: '#f59e0b', // amber-500
   high: '#ef4444', // red-500
+  full: '#475569', // Gray-600
 };
 
 const BG_COLORS: Record<CapacityStatus, string> = {
   low: '#d1fae5', // emerald-100
   mid: '#fef3c7', // amber-100
   high: '#fee2e2', // red-100
+  full: '#f1f5f9', // slate-100
 };
 
 const LABELS: Record<CapacityStatus, string> = {
   low: 'Tersedia',
   mid: 'Sebagian Penuh',
   high: 'Hampir Penuh',
+  full: 'Penuh (Tutup)',
 };
 
 function createWargaIcon(status: CapacityStatus) {
@@ -57,6 +60,7 @@ function MapController({ flyTo }: { flyTo: { lat: number; lng: number; zoom: num
 }
 
 export default function WargaMapPage() {
+  const { locations } = useLocations();
   const [selectedLoc, setSelectedLoc] = useState<Location | null>(null);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
   const { getPosition } = useGeolocation();
