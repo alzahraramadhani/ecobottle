@@ -1,73 +1,60 @@
-# React + TypeScript + Vite
+# EcoBottle — Sistem Monitoring Sampah Botol Plastik
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi web monitoring pengumpulan sampah botol plastik berbasis **React + TypeScript + Vite + Tailwind CSS + Leaflet + Supabase**.
 
-Currently, two official plugins are available:
+## Fitur Utama
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Warga
+- **Beranda Warga**: Ringkasan dampak pribadi (botol diselamatkan, Eco Poin, estimasi emisi CO₂ dicegah) dan rekomendasi dropbox aktif.
+- **Peta Interaktif + Pencarian & Filter**: Cari titik dropbox terdekat, filter status (`Semua`, `Tersedia`, `Hampir Penuh`), dan setor botol langsung melalui modal setor (otomatis menambah kapasitas dropbox, poin, XP, dan streak).
+- **Papan Peringkat**: Leaderboard real-time berdasarkan Eco Poin warga.
+- **Profil**: Level, progress XP, statistik kontribusi, dan riwayat setoran pribadi.
 
-## React Compiler
+### Petugas
+- **Dashboard Operasional**: Statistik total botol, jumlah titik lokasi, persentase layak daur ulang, jumlah lokasi perlu angkut, grafik pengumpulan 7 hari terakhir, dan status kapasitas semua dropbox.
+- **Peta Kontrol**: Memantau kapasitas dropbox, menutup dropbox penuh, atau mengosongkan & membuka kembali dropbox.
+- **Input Data Sampah**: Mencatat pengumpulan botol harian beserta berat, jenis plastik (`PET`, `HDPE`, `PP`, `Campuran`), kondisi, dan catatan.
+- **Laporan & Ekspor**: Ringkasan bulanan dinamis, rincian per jenis plastik, riwayat transaksi, **Unduh CSV**, dan **Cetak / Simpan PDF**.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Setup Lokal & Supabase
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2. **Siapkan Project Supabase**
+   - Buat project baru di [Supabase](https://supabase.com).
+   - Jalankan SQL migration dari [`supabase/migrations/20261126000000_init_ecobottle.sql`](supabase/migrations/20261126000000_init_ecobottle.sql) di SQL Editor Supabase.
+   - Jalankan seed lokasi awal dari [`supabase/seed.sql`](supabase/seed.sql).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3. **Konfigurasi Environment**
+   - Salin `.env.example` menjadi `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Isi `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY` dari Dashboard Supabase (*Project Settings → API*).
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+4. **Menetapkan Akun Petugas**
+   - Semua akun baru yang mendaftar lewat aplikasi otomatis berstatus `warga`.
+   - Untuk mengubah akun tertentu menjadi `petugas`, jalankan SQL berikut di Supabase SQL Editor:
+     ```sql
+     update public.profiles
+     set role = 'petugas'
+     where id = (
+       select id from auth.users where email = 'petugas@domain.com'
+     );
+     ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+5. **Jalankan Aplikasi**
+   ```bash
+   npm run dev
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Scripts
+- `npm run dev` — Menjalankan server pengembangan Vite
+- `npm run build` — Type-check TypeScript (`tsc -b`) dan build produksi (`vite build`)
+- `npm run lint` — Menjalankan ESLint
+- `npm test` — Menjalankan unit test dengan Vitest

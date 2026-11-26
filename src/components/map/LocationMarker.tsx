@@ -1,18 +1,23 @@
 import { useEffect, useRef } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import { Navigation, Scan, PowerOff, CheckCircle } from 'lucide-react';
 import type { Location, CapacityStatus } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
+import { useLocations } from '../../hooks/useLocations';
+import { useToast } from '../../hooks/useToast';
 
 interface LocationMarkerProps {
   location: Location;
   onMarkerReady: (id: number, marker: L.Marker) => void;
+  onDepositClick: (location: Location) => void;
 }
 
 const COLORS: Record<CapacityStatus, string> = {
   low: '#22c55e',
   mid: '#f59e0b',
   high: '#ef4444',
-  full: '#475569', // Gray-600 for closed/full
+  full: '#475569',
 };
 
 const LABELS: Record<CapacityStatus, string> = {
@@ -26,7 +31,7 @@ const BG_COLORS: Record<CapacityStatus, string> = {
   low: '#dcfce7',
   mid: '#fef3c7',
   high: '#fee2e2',
-  full: '#f1f5f9', // Slate-100
+  full: '#f1f5f9',
 };
 
 function createIcon(status: CapacityStatus) {
@@ -48,12 +53,11 @@ function createIcon(status: CapacityStatus) {
   });
 }
 
-import { useAuth } from '../../context/AuthContext';
-import { useLocations } from '../../context/LocationContext';
-import { useToast } from '../../context/ToastContext';
-import { Navigation, Scan, PowerOff, CheckCircle } from 'lucide-react';
-
-export default function LocationMarker({ location, onMarkerReady }: LocationMarkerProps) {
+export default function LocationMarker({
+  location,
+  onMarkerReady,
+  onDepositClick,
+}: LocationMarkerProps) {
   const markerRef = useRef<L.Marker>(null);
   const { user } = useAuth();
   const { updateLocationStatus } = useLocations();
@@ -68,6 +72,19 @@ export default function LocationMarker({ location, onMarkerReady }: LocationMark
   const color = COLORS[location.status];
   const bgColor = BG_COLORS[location.status];
   const label = LABELS[location.status];
+
+  const handleStatusChange = async (newStatus: CapacityStatus) => {
+    const res = await updateLocationStatus(location.id, newStatus);
+    if (!res.ok) {
+      showToast(`❌ ${res.error || 'Gagal memperbarui status'}`);
+      return;
+    }
+    if (newStatus === 'low') {
+      showToast(`✅ ${location.name} dikosongkan & dibuka kembali`);
+    } else {
+      showToast(`🚨 ${location.name} ditutup manual`);
+    }
+  };
 
   return (
     <Marker
@@ -91,7 +108,7 @@ export default function LocationMarker({ location, onMarkerReady }: LocationMark
           >
             {label}
           </div>
-          
+
           <div className="w-full flex flex-col gap-2">
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`}
@@ -102,41 +119,33 @@ export default function LocationMarker({ location, onMarkerReady }: LocationMark
               <Navigation size={14} /> Arahkan
             </a>
             {user?.role === 'warga' && location.status !== 'full' && (
-              <button 
-                onClick={() => {
-                  const qty = 5; // Dummy input for warga
-                  addBottles(location.id, qty);
-                  showToast(`✅ Berhasil menukar ${qty} botol!`);
-                }}
-                className="w-full py-2 bg-white border border-slate-200 text-slate-800 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:bg-slate-50 transition-colors"
+              <button
+                type="button"
+                onClick={() => onDepositClick(location)}
+                className="w-full py-2 bg-emerald-600 text-white border-none flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer shadow-sm hover:bg-emerald-700 transition-colors"
               >
                 <Scan size={14} /> Tukar Botol
               </button>
             )}
 
-            {user?.role === 'petugas' && (
-              location.status === 'full' ? (
-                <button 
-                  onClick={() => {
-                    updateLocationStatus(location.id, 'low');
-                    showToast(`✅ Status ${location.name} diubah ke Tersedia`);
-                  }}
+            {user?.role === 'petugas' &&
+              (location.status === 'full' ? (
+                <button
+                  type="button"
+                  onClick={() => void handleStatusChange('low')}
                   className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer hover:bg-emerald-100 transition-colors"
                 >
-                  <CheckCircle size={14} /> Buka Kembali
+                  <CheckCircle size={14} /> Kosongkan &amp; Buka
                 </button>
               ) : (
-                <button 
-                  onClick={() => {
-                    updateLocationStatus(location.id, 'full');
-                    showToast(`🚨 ${location.name} ditutup manual`);
-                  }}
+                <button
+                  type="button"
+                  onClick={() => void handleStatusChange('full')}
                   className="w-full py-2 bg-red-50 text-red-600 border border-red-100 flex gap-1.5 items-center justify-center text-[11px] font-bold rounded cursor-pointer hover:bg-red-100 transition-colors"
                 >
                   <PowerOff size={14} /> Tutup Tempat Sampah
                 </button>
-              )
-            )}
+              ))}
           </div>
         </div>
       </Popup>

@@ -1,45 +1,184 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { User, Role } from '../types';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import type { Feature, Role, User } from '../types';
+import { supabase } from '../lib/supabase';
+import { AuthContext, canRoleAccess, type AuthResult } from './authContextDef';
 
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (name: string, password: string, role: Role) => boolean;
-  logout: () => void;
-  canAccess: (feature: 'dashboard' | 'map' | 'input' | 'report' | 'rangking' | 'profile') => boolean;
+interface ProfileRow {
+  id: string;
+  full_name: string;
+  role: Role;
+  points: number;
+  xp: number;
+  level: number;
+  bottles_saved: number;
+  emission_kg: number | string;
+  streak_days: number;
 }
 
-const PASSWORDS: Record<Role, string> = {
-  petugas: 'petugas123',
-  warga: 'warga123',
-};
+async function fetchUserProfile(session: Session): Promise<User | null> {
+  if (!supabase) return null;
 
-const ROLE_ACCESS: Record<Role, string[]> = {
-  petugas: ['dashboard', 'map', 'input', 'report'],
-  warga: ['dashboard', 'map', 'rangking', 'profile'],
-};
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, role, points, xp, level, bottles_saved, emission_kg, streak_days')
+    .eq('id', session.user.id)
+    .maybeSingle<ProfileRow>();
 
-const AuthContext = createContext<AuthContextType | null>(null);
+  if (error) {
+    console.error('Failed to fetch profile:', error.message);
+    return null;
+  }
+
+  if (!data) {
+    return {
+      id: session.user.id,
+      email: session.user.email ?? '',
+      name:
+        (session.user.user_metadata?.full_name as string | undefined) ||
+        session.user.email?.split('@')[0] ||
+        'Pengguna',
+      role: 'warga',
+      points: 0,
+      xp: 0,
+      level: 1,
+      bottlesSaved: 0,
+      emissionKg: 0,
+      streakDays: 0,
+    };
+  }
+
+  return {
+    id: data.id,
+    email: session.user.email ?? '',
+    name: data.full_name,
+    role: data.role,
+    points: data.points,
+    xp: data.xp,
+    level: data.level,
+    bottlesSaved: data.bottles_saved,
+    emissionKg: Number(data.emission_kg) || 0,
+    streakDays: data.streak_days,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(Boolean(supabase));
 
-  const login = useCallback((name: string, password: string, role: Role): boolean => {
-    if (PASSWORDS[role] !== password) {
-      return false;
+  const syncSession = useCallback(async (session: Session | null) => {
+    if (!session) {
+      setUser(null);
+      setLoading(false);
+      return;
     }
-    setUser({ name, role });
-    return true;
+
+    const profile = await fetchUserProfile(session);
+    setUser(profile);
+    setLoading(false);
   }, []);
 
-  const logout = useCallback(() => {
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) {
+        void syncSession(data.session);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        void syncSession(session);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [syncSession]);
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      if (!supabase) {
+        return { ok: false, error: 'Konfigurasi Supabase belum diatur.' };
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      await syncSession(data.session);
+      return { ok: true };
+    },
+    [syncSession]
+  );
+
+  const register = useCallback(
+    async (name: string, email: string, password: string): Promise<AuthResult> => {
+      if (!supabase) {
+        return { ok: false, error: 'Konfigurasi Supabase belum diatur.' };
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      if (data.session) {
+        await syncSession(data.session);
+        return { ok: true };
+      }
+
+      return {
+        ok: true,
+        error: 'Pendaftaran berhasil. Silakan cek email untuk verifikasi sebelum masuk.',
+      };
+    },
+    [syncSession]
+  );
+
+  const logout = useCallback(async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      const profile = await fetchUserProfile(data.session);
+      setUser(profile);
+    }
+  }, []);
+
   const canAccess = useCallback(
-    (feature: 'dashboard' | 'map' | 'input' | 'report' | 'rangking' | 'profile'): boolean => {
+    (feature: Feature): boolean => {
       if (!user) return false;
-      return ROLE_ACCESS[user.role].includes(feature);
+      return canRoleAccess(user.role, feature);
     },
     [user]
   );
@@ -48,21 +187,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        loading,
         isAuthenticated: !!user,
         login,
+        register,
         logout,
+        refreshProfile,
         canAccess,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

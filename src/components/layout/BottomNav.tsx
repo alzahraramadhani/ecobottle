@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Map, ClipboardEdit, FileText, Trophy, User } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import type { Feature } from '../../types';
 
 interface NavItem {
   path: string;
   label: string;
   icon: typeof Home;
-  feature: 'dashboard' | 'map' | 'input' | 'report' | 'rangking' | 'profile';
+  feature: Feature;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -26,7 +27,7 @@ export default function BottomNav() {
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.feature));
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-white border-t border-gray-100 flex px-3 py-2 pb-3 z-[200] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] md:hidden">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-white border-t border-gray-100 flex px-3 py-2 pb-3 z-[200] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] md:hidden print:hidden">
       {visibleItems.map((item) => {
         const isActive = location.pathname === item.path;
         return (

@@ -1,70 +1,63 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClipboardEdit, CheckCircle } from 'lucide-react';
-import { useLocations } from '../context/LocationContext';
-import { useToast } from '../context/ToastContext';
-import type { InputEntry } from '../types';
-
-let _inputHistory: InputEntry[] = [];
-let _listeners: (() => void)[] = [];
-
-export function getInputHistory(): InputEntry[] {
-  return _inputHistory;
-}
-
-export function addInputEntry(entry: InputEntry) {
-  _inputHistory = [entry, ..._inputHistory];
-  _listeners.forEach((fn) => fn());
-}
-
-export function subscribeInputHistory(fn: () => void) {
-  _listeners.push(fn);
-  return () => {
-    _listeners = _listeners.filter((l) => l !== fn);
-  };
-}
+import { useLocations } from '../hooks/useLocations';
+import { useToast } from '../hooks/useToast';
+import type { BottleCondition, PlasticType } from '../types';
 
 export default function InputPage() {
   const { showToast } = useToast();
-  const { locations, addBottles } = useLocations();
+  const { locations, depositBottles } = useLocations();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [locationId, setLocationId] = useState('');
   const [qty, setQty] = useState('');
   const [weight, setWeight] = useState('');
-  const [type, setType] = useState('PET');
-  const [condition, setCondition] = useState('Baik');
+  const [type, setType] = useState<PlasticType>('PET');
+  const [condition, setCondition] = useState<BottleCondition>('Baik');
   const [note, setNote] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!locationId) {
       showToast('⚠️ Pilih lokasi dulu');
       return;
     }
-    if (!qty || Number(qty) <= 0) {
+
+    const parsedQty = parseInt(qty, 10);
+    if (!qty || Number.isNaN(parsedQty) || parsedQty <= 0) {
       showToast('⚠️ Masukkan jumlah botol');
       return;
     }
 
-    const loc = locations.find((l) => l.id === Number(locationId));
-    if (!loc) return;
+    const parsedWeight = weight ? parseFloat(weight) : undefined;
+    if (parsedWeight !== undefined && (Number.isNaN(parsedWeight) || parsedWeight < 0)) {
+      showToast('⚠️ Berat tidak boleh negatif');
+      return;
+    }
 
-    addInputEntry({
-      location: loc.name,
-      qty: parseInt(qty),
-      weight: parseFloat(weight) || 0,
-      type,
-      condition,
-      note,
-      time: new Date().toLocaleString('id-ID'),
-    });
+    setSubmitting(true);
+    try {
+      const res = await depositBottles({
+        locationId: Number(locationId),
+        qty: parsedQty,
+        weight: parsedWeight,
+        type,
+        condition,
+        note,
+      });
 
-    // Update global location status
-    addBottles(Number(locationId), parseInt(qty));
+      if (!res.ok) {
+        showToast(`❌ ${res.error || 'Gagal menyimpan data'}`);
+        return;
+      }
 
-    setShowSuccess(true);
-    showToast('✅ Data berhasil disimpan!');
+      setShowSuccess(true);
+      showToast('✅ Data berhasil disimpan!');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -126,7 +119,8 @@ export default function InputPage() {
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
                   placeholder="0"
-                  min="0"
+                  min="1"
+                  max="5000"
                   className={inputClass}
                 />
               </div>
@@ -138,7 +132,7 @@ export default function InputPage() {
                   type="number"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  placeholder="0.0"
+                  placeholder="Otomatis jika kosong"
                   step="0.1"
                   min="0"
                   className={inputClass}
@@ -152,7 +146,7 @@ export default function InputPage() {
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) => setType(e.target.value as PlasticType)}
                 className={inputClass}
               >
                 <option value="PET">PET (Botol minum)</option>
@@ -168,7 +162,7 @@ export default function InputPage() {
               </label>
               <select
                 value={condition}
-                onChange={(e) => setCondition(e.target.value)}
+                onChange={(e) => setCondition(e.target.value as BottleCondition)}
                 className={inputClass}
               >
                 <option value="Baik">Baik (layak daur ulang)</option>
@@ -192,9 +186,10 @@ export default function InputPage() {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-br from-green-600 to-green-500 text-white border-none rounded-app-sm font-sans text-base font-bold cursor-pointer transition-transform active:scale-[0.98] shadow-[0_4px_16px_rgba(22,163,74,0.3)] mt-2"
+              disabled={submitting}
+              className="w-full py-3.5 bg-gradient-to-br from-green-600 to-green-500 text-white border-none rounded-app-sm font-sans text-base font-bold cursor-pointer transition-transform active:scale-[0.98] shadow-[0_4px_16px_rgba(22,163,74,0.3)] mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Simpan Data ✓
+              {submitting ? 'Menyimpan...' : 'Simpan Data ✓'}
             </button>
           </motion.form>
         ) : (
@@ -213,6 +208,7 @@ export default function InputPage() {
               Entri baru telah tercatat ke dalam sistem
             </p>
             <button
+              type="button"
               onClick={resetForm}
               className="w-full py-3.5 bg-gradient-to-br from-green-600 to-green-500 text-white border-none rounded-app-sm font-sans text-base font-bold cursor-pointer transition-transform active:scale-[0.98] shadow-[0_4px_16px_rgba(22,163,74,0.3)] mt-4"
             >

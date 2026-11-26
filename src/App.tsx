@@ -15,7 +15,7 @@ import WargaHomePage from './pages/warga/WargaHomePage';
 import WargaRankingPage from './pages/warga/WargaRankingPage';
 import WargaProfilePage from './pages/warga/WargaProfilePage';
 
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 
 function RouterConfig() {
   const { user } = useAuth();

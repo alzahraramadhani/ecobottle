@@ -23,7 +23,7 @@ export default function NearestBanner({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          className="absolute top-3 left-3 right-3 z-[450] bg-white rounded-app p-3.5 px-4 shadow-app-lg flex gap-3 items-center border-l-4 border-green-500"
+          className="absolute top-[104px] left-3 right-3 max-w-md z-[450] bg-white rounded-app p-3.5 px-4 shadow-app-lg flex gap-3 items-center border-l-4 border-green-500"
         >
           <MapPin size={20} className="text-green-600 flex-shrink-0" />
           <div className="flex-1">

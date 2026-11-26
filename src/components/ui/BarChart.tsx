@@ -6,13 +6,13 @@ interface BarChartProps {
 }
 
 export default function BarChart({ data }: BarChartProps) {
-  const maxVal = Math.max(...data.map((d) => d.value));
+  const maxVal = Math.max(0, ...data.map((d) => d.value));
 
   return (
     <div className="bg-white rounded-app p-5 shadow-app border border-gray-100">
       <div className="flex items-end gap-2 h-[130px] mt-4 pt-2.5">
         {data.map((d, i) => {
-          const pct = (d.value / maxVal) * 100;
+          const pct = maxVal > 0 ? (d.value / maxVal) * 100 : 0;
           return (
             <div
               key={d.day}
