@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Map, ClipboardEdit, FileText, LogOut, Recycle, Trophy, User } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import type { Feature, Role } from '../../types';
 
 interface NavItem {
   path: string;
   label: string;
   icon: typeof Home;
-  feature: 'dashboard' | 'map' | 'input' | 'report' | 'rangking' | 'profile';
+  feature: Feature;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -18,8 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/profile', label: 'Profile', icon: User, feature: 'profile' },
 ];
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
+const ROLE_LABELS: Record<Role, string> = {
   petugas: 'Petugas',
   warga: 'Warga',
 };
@@ -31,13 +31,13 @@ export default function SidebarNav() {
 
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.feature));
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
   return (
-    <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-gray-100 h-screen sticky top-0">
+    <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-gray-100 h-screen sticky top-0 print:hidden">
       {/* Brand */}
       <div className="p-5 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2.5">

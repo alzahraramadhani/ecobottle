@@ -59,3 +59,10 @@ body {
   height: 100%;
   z-index: 1;
 }
+
+/* =================== PRINT STYLES =================== */
+@media print {
+  body {
+    background: #ffffff;
+  }
+}
